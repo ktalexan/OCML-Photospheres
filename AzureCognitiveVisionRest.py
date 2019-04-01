@@ -32,19 +32,30 @@ http.client._MAXHEADERS = 5000
 
 class AzCognVisionRest(object):
     """Class AzCognVisionRest:
+    This class contains a number of functions, methods and processes for ML object classification analysis
+    using the Azure Cognitive Services Computer Vision API.
 
-    Attributes:
+    Global Attributes
+        blobAccount: the name of the Azure blob storage account
+        blobKey: the API key of the Azure blob storage account
         apiRegion: the azure region of the Azure Cognitive Services Computer Vision API (e.g., 'westus')
         apiKey: the Azure Cognitive Services Computer Vision API key (from azure)
+        containerName: the base container name of the Azure blob storage account containing the photosphere images
+
+    Example Class initialization:
+        az = AzCognVisionRest(blobAccount, blobKey, apiRegion, apiKey, containerName)
     """
 
     def __init__(self, blobAccount, blobKey, apiRegion, apiKey, containerName):
         """Function Class Initialization
         Returns an Azure Cognitive Services Computer Vision object (REST API) using a region and key.
 
-        Parameters
+        Attributes
+            blobAccount: the name of the Azure blob storage account
+            blobKey: the API key of the Azure blob storage account
             apiRegion: the azure region of the Azure Cognitive Services Computer Vision API (e.g., 'westus')
             apiKey: the Azure Cognitive Services Computer Vision API key (from azure)
+            containerName: the base container name of the Azure blob storage account containing the photosphere images
 
         Returns
             client: A ComputerVisionAPI object
@@ -131,9 +142,10 @@ class AzCognVisionRest(object):
         for direction in cardinalDictionary:
             if cardinalDictionary[direction][0] <= round(value, 3) < cardinalDictionary[direction][1]:
                 if direction == 'N0' or direction == 'N1':
-                    direction = 'N'
-                return direction
-
+                    cardinalDir = 'N'
+                else:
+                    cardinalDir = direction
+        return cardinalDir
 
 
 
@@ -152,9 +164,10 @@ class AzCognVisionRest(object):
         """
         degout = math.degrees(math.atan2(easting, northing))
         if degout >= 0:
-            return 180 + degout
+            degout = 180 + degout
         elif degout < 0:
-            return - degout
+            degout = - degout
+        return degout
 
 
 
@@ -309,6 +322,7 @@ class AzCognVisionRest(object):
         filename = name + '.json'
         with open(filename, 'w') as fp:
             json.dump(data, fp)
+        return
 
 
 
@@ -381,7 +395,8 @@ class AzCognVisionRest(object):
                 for key in jsonimg.keys():
                     metastring[key] = str(jsonimg[key])
                 self.blobService.set_blob_metadata(self.containerName,imgName, metastring)
-                print('\tUpdating metadata in azure blob')                
+                print('\tUpdating metadata in azure blob')
+        return
 
 
 
@@ -543,6 +558,4 @@ class AzCognVisionRest(object):
         except Exception as ex:
             # Print the exception message
             print(ex.args[0])
-
-
 

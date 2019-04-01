@@ -50,3 +50,4 @@ blobList = az.get_blob_list()
 az.process_cardinal_images(blobList[0], containerIn = containerName, containerOut= 'cardinal')
 for blob in tqdm(blobList):
     az.process_cardinal_images(blob, containerIn = containerName, containerOut= 'cardinal')
+
