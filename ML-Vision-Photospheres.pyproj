@@ -25,6 +25,9 @@
     <Compile Include="AzureCognitiveVisionRest.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ML Vision ArcGIS.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="ML_Vision_Photospheres.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
