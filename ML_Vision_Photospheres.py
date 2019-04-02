@@ -10,7 +10,10 @@
 #   b. The API key generated for the Azure Cognitive Services Computer Vision service.
 # These two values, are then parsed for use in the rest of the code and functions.
 
-import os
+import os, http.client
+# Set maximum number of http requests
+http.client._MAXHEADERS = 5000
+
 
 # Setup account and key for the Azure blob storage containing the photosphere images.
 blobAccount = 'azmlstorageblob'
@@ -30,6 +33,7 @@ elif computer == "DRK01":
 os.chdir(prjPath)
 
 %run AzureCognitiveVisionRest.py
+%load AzureCognitiveVisionRest.py
 az = AzCognVisionRest(blobAccount, blobKey, apiRegion, apiKey, containerName)
 
 # Class function tests -- all working fine.
