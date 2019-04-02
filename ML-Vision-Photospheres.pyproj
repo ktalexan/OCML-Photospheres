@@ -21,6 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AzureCognitiveVisionRest_v2.py" />
     <Compile Include="AzureCognitiveVisionRest.py">
       <SubType>Code</SubType>
     </Compile>
