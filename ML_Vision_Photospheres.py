@@ -33,7 +33,6 @@ elif computer == "DRK01":
 os.chdir(prjPath)
 
 %run AzureCognitiveVisionRest.py
-%load AzureCognitiveVisionRest.py
 az = AzCognVisionRest(blobAccount, blobKey, apiRegion, apiKey, containerName)
 
 # Class function tests -- all working fine.
@@ -51,7 +50,8 @@ for blob in blobtest:
 az.update_blob_metadata(metadata = 'CameraMetadata.xlsx')
 
 blobList = az.get_blob_list()
-az.process_cardinal_images(blobList[0], containerIn = containerName, containerOut= 'cardinal')
+blob = blobList[0]
+az.process_cardinal_images(blob, 'photospheres','cardinal')
 for blob in tqdm(blobList):
     az.process_cardinal_images(blob, containerIn = containerName, containerOut= 'cardinal')
 
