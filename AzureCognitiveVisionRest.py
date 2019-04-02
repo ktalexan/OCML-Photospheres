@@ -77,10 +77,7 @@ class AzCognVisionRest(object):
         self.visionBaseUrl = 'https://{}.api.cognitive.microsoft.com/vision/v2.0/'.format(self.apiRegion)
 
         # Setup the global headers configuration
-        self.headers = {
-            'Ocp-Apim-Subscription-Key': self.subscriptionKey,
-            'Content-Type': 'application/octet-stream'
-            }
+        self.headers = {"Ocp-Apim-Subscription-Key": self.subscriptionKey, "Content-Type": "application/octet-stream"}
 
         # Setup the Azure blob container name
         self.containerName = containerName
@@ -428,7 +425,7 @@ class AzCognVisionRest(object):
                     metaString[field] = float(metaString[field])
 
                 # Getting the photosphere image from azure blob storage and convert it to bytes
-                content = self.blobService.get_blob_to_bytes(containerIn, blob.name).content
+                content = self.blobService.get_blob_to_bytes(containerIn, imageName).content
                 img = Image.open(io.BytesIO(content))
 
                 # Creating the areas of the cardinal images
@@ -457,8 +454,9 @@ class AzCognVisionRest(object):
 
                     # Set up the Computer Vision analysis parameter
                     url = self.visionBaseUrl + 'analyze'
-                    params = {'visualFeatures': 'Categories,Tags,Description,ImageType,Color,Objects'}
-                    response = requests.post(url, headers = self.headers, params = params, data = cardinalArray)
+                    headers = self.headers
+                    params = {"visualFeatures": "Categories,Tags,Description,ImageType,Color,Objects"}
+                    response = requests.post(url, headers = headers, params = params, data = cardinalArray)
                     response.raise_for_status()
                     responsejson = response.json()
                     if 'captions' in responsejson['description']:
