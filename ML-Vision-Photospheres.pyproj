@@ -30,6 +30,12 @@
     </Compile>
     <Compile Include="ML_Vision_Photospheres.py" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="CameraMetadata.xlsx" />
+    <Content Include="credentialsArcGIS.json" />
+    <Content Include="credentialsAzure.json" />
+    <Content Include="README.md" />
+  </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
        Visual Studio and specify your pre- and post-build commands in

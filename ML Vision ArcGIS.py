@@ -9,7 +9,8 @@
 # ----------------------------
 
 # Import the required libraries for the project
-import os, io, geojson, json, http.client, requests, getpass
+import os, io, geojson, json, http.client, requests, getpass, time
+from datetime import datetime
 from arcgis.gis import GIS
 from arcgis.features import FeatureLayerCollection
 from azure.storage.blob import BlockBlobService
@@ -19,6 +20,12 @@ from ipywidgets import widgets
 from IPython.display import display
 http.client._MAXHEADERS = 5000
 
+computer = os.environ['COMPUTERNAME']
+if computer == "SRVYGS046C":
+    prjPath = r"C:\Users\OCPWAlexandridisK\source\repos\ktalexan\ML-Vision-Photospheres"
+elif computer == "DRK01":
+    prjPath = r"C:\Users\ktale\source\repos\ktalexan\ML-Vision-Photospheres"
+os.chdir(prjPath)
 
 
 # -------------------------------------------------------
@@ -65,43 +72,54 @@ blobList = get_blob_list('cardinal')
 # ArcGIS Online
 
 # Get the account and token information for the ArcGIS online account.
-username = 'ktalexan'
-#password = getpass.getpass()
+with open('credentialsArcGIS.json') as f:
+    credAGO = json.load(f)
+    userArcGIS = credAGO['username']
+    pswArcGIS = credAGO['password']
 
-password = 'alextk@646'
-
-
-gis = GIS('https://www.arcgis.com', username, password)
+gis = GIS('https://www.arcgis.com', userArcGIS, pswArcGIS)
 
 tokenURL = 'https://www.arcgis.com/sharing/rest/generateToken'
-params = {'f': 'pjson', 'username': username, 'password': password, 'referer': 'https://www.arcgis.com', 'expiration': str(21600)}
+params = {'f': 'pjson', 'username': userArcGIS, 'password': pswArcGIS, 'referer': 'https://www.arcgis.com', 'expiration': str(525600)}
 response = requests.post(tokenURL, data = params, verify = True)
 token = response.json()['token']
-
+5261750
 me = gis.users.me
-display(me)
+print("User: {}".format(me.username))
 
 user_groups = me.groups
-print('Member of ' + str(len(user_groups)) + ' groups')
-for group in user_groups:
-    print(group.title)
+print('\nUser {} is a member of {} groups:'.format(me.username, str(len(user_groups))))
+for i, group in enumerate(user_groups):
+    print('\t[{}]: {}'.format(i, group.title))
 
 # Obtain a list of folders for the user
 myfolders = me.folders
-for folder in myfolders:
-    print(folder['title'])
+print('\nUser {} has {} folders:'.format(me.username, str(len(myfolders))))
+for i, folder in enumerate(myfolders):
+    print('\t[{}]: {}'.format(i, folder['title']))
 
 # Get the properties of the 'AzCognVision' folder
 for i, folder in enumerate(myfolders):
     if folder['title'] == 'AzCognVision':
-        print(folder)
+        print('\nProperties of {} folder:'.format(folder['title']))
+        for attr in folder:
+            if attr == 'created':
+                dt = datetime.fromtimestamp(folder[attr] / 1e3)
+                created = datetime.strftime(dt, '%m/%d/%Y %I:%M%p')
+                print('\t{}: {}'.format(attr, created))
+            else:
+                print('\t{}: {}'.format(attr, folder[attr]))
+
 
 # Set the 'AzCognitiveVision' as the working folder
 workingfolder = [folder for folder in myfolders if folder['title'] == 'AzCognVision'][0]
-workingfolder
+print('\nMy working ArcGIS folder is: {}'.format(workingfolder['title']))
 
 # List all the items in the working folder
-me.items(folder = workingfolder)
+myitems = me.items(folder = workingfolder)
+print('\tItems in my working folder:')
+for i, item in enumerate(myitems):
+    print('\t\t[{}]: {} ({})'.format(i, item['title'], item['type']))
 
 
 # ----------------------------------------------------------
@@ -215,3 +233,15 @@ rev_acvfeat[3231].attributes['Picture']
 # Check the results of the edit operations
 acvfl_edited = acvfl.query()
 acvfl_edited.sdf.head()
+acvfl_edited.features[0].attributes['ImageUrl']
+
+test = rev_acvfeat[0]
+test.attributes['ImageUrl']
+oid = test.attributes['ObjectId']
+aid = acvfl.attachments.get_list(oid=oid)[0]['id']
+newUrl = '{}/{}/attachments/{}?token={}'.format(baseUrl, str(oid), str(aid), token)
+test.attributes['ImageUrl'] = newUrl
+update_result = acvfl.edit_features(updates = [test])
+update_result
+
+[field for fields in acvfset.fields if field.name == 'Picture']
