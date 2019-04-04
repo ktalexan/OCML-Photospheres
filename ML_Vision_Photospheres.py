@@ -59,5 +59,10 @@ for blob in tqdm(blobList):
     az.process_cardinal_images(blob, containerIn = containerName, containerOut= 'cardinal')
 
 
+
+az.tag_photosphere_images('photospheres-tagged')
+
 az.check_blob_container('cardinal')
-az.create_geojson_from_cardinals('cardinal')
+cardinalFeatureCollection = az.create_geojson_from_cardinals('cardinal')
+az.write_jsonfile('cardinalFeatureCollection', cardinalFeatureCollection)
+

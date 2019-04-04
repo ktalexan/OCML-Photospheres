@@ -435,6 +435,53 @@ class AzCognVisionRest(object):
 
 
 
+    def tag_photosphere_images(self, blobContainerOut):
+        """Creates tagged photosphere images
+        This function tags and annotates the original photosphere images with the areas covered by
+        the cardinal areas. The tagged photosphere images are then copyied to a new blob container.
+
+        Arguments
+            blobContainerOut: the blob container for the tagged images to be saved (if it doesn't
+                            exist, then the folder is created)
+
+        Output
+            Nothing, all operations are done to the blob container.
+        """
+        try:
+            self.check_blob_container(self.containerName)
+            self.check_blob_container(blobContainerOut, create=True, publicAccess='blob')
+            blobListIn = self.get_blob_list(self.containerName)
+            for blob in tqdm(blobListIn):
+                blobmeta = self.blobService.get_blob_metadata(self.containerName,blob.name)
+                blobmeta['Photosphere_URL'] = '{}/{}/{}'.format(self.blobBaseUrl, blobContainerOut, blob.name)
+                imageName = blob.name
+                content = self.blobService.get_blob_to_bytes(self.containerName, imageName).content
+                img = Image.open(io.BytesIO(content))
+                draw = ImageDraw.Draw(img)
+                font = ImageFont.truetype('arial.ttf', 45)
+                areas = []
+                step = 1000
+                for i in range(0, 8000, step):
+                    coor = (i, 1550, i + step, 2550)
+                    areas.append(coor)
+                for ncard, area in enumerate(areas):
+                    draw.rectangle([area[0], area[1], area[2], area[3]], None, 'red', width=3)
+                    draw.text((area[0] + 5, area[1] + 5), str(ncard + 1), fill = 'red', font = font)
+                    taggedImgArray = io.BytesIO()
+                    img.save(taggedImgArray, format = 'JPEG')
+                    taggedImgArray = taggedImgArray.getvalue()
+                    self.blobService.create_blob_from_bytes(
+                        container_name = blobContainerOut,
+                        blob_name = imageName,
+                        blob = taggedImgArray,
+                        metadata = blobmeta
+                        )
+        except Exception as ex:
+            print(ex.args[0])
+
+
+
+
     def process_cardinal_images(self, blob, containerIn, containerOut):
         """Process cardinal images from original photospheres
         This function crops and obtains 8 cardinal images (1000 x 1000) from the original photospheres,
