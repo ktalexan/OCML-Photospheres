@@ -81,6 +81,8 @@ class AzCognVisionRest(object):
 
         # Setup the Azure blob container name
         self.containerName = containerName
+        self.blobBaseUrl = 'https://{}.blob.core.windows.net'.format(self.blobAccount)
+        self.blobBaseUrl_photospheres = '{}/{}'.format(self.blobBaseUrl, self.containerName)
 
 
 
@@ -222,6 +224,34 @@ class AzCognVisionRest(object):
         return dtobject
 
 
+    def check_blob_container(self, containerName, create=False, publicAccess='blob'):
+        """Check for the presence of a blob container in the account
+        This function checks the Azure storage account whether or not a blob container (folder) exists or not.
+        If the container exists, the program makes sure the publicAccess is set to the value of the function.
+        If the container does not exist, if create=True, then the folder is created and publicAccess is set.
+        If the container does not exist, and create=False (default), nothing is done.
+
+        Arguments
+            containerName: the name of the blob container (folder) to be checked
+            create (=False by default): whether or not to create a new container if it doesn't exist.
+            publicAccess (='blob' by default): level of public access to URL ('blob', 'container', etc)
+
+        Returns
+            Nothing. Performs operations in Microsoft Azure Storage on the cloud.
+        """
+        if self.blobService.exists(containerName):
+            self.blobService.set_container_acl(containerName, public_access = publicAccess)
+            print('Container {} exists. Public Access is set to {}'.format(containerName, publicAccess))
+        elif create == True:
+            self.blobService.create_container(containerName, public_access = publicAccess)
+            assert self.blobService.exists(containerName)
+            print('Container {} did not exist. A new container is created with public_access set to {}'.format(containerName, publicAccess))
+        else:
+            print('Container did not exist. No changes are requested. Program exits.')
+        return
+
+
+
 
 
     # --------------------------------------
@@ -229,18 +259,23 @@ class AzCognVisionRest(object):
     # --------------------------------------
 
 
-    def get_blob_list(self):
+    def get_blob_list(self, containerName=None):
         """List all blobs in Azure storage blob
         This function gets a list of all files in an Azure storage blob (by container folder name)
 
         Arguments
-            containerName: the Azure storage blob container name (from class initialization)
+            containerName (optional): 
+                if containerName is None: Uses the Azure storage blob container name (from class initialization)
+                if containerName is not None: Uses the defined Azure storage blob container
 
         Output
             blobList: the list of all files in the container
         """
         # List the blobs in the container (from class initialization)
-        container = self.containerName
+        if containerName is None:
+            container = self.containerName
+        else:
+            container = containerName
         blobList = []
         generator = self.blobService.list_blobs(container)
         for blob in generator:
@@ -344,6 +379,7 @@ class AzCognVisionRest(object):
             Nothing; performs operation in the blob container
         """
         containerList = self.get_blob_list()
+        self.check_blob_container(self.containerName)
         noImg = len(containerList)
         print('Number of blobs in container: {}'.format(noImg))
 
@@ -369,6 +405,7 @@ class AzCognVisionRest(object):
                 jsonimg['DateTime_display'] = imgdt.strftime('%m/%d/%Y %H:%M:%S.%f').rstrip('0')
                 jsonimg['DateTime_string'] = imgdt.strftime('%Y%m%d%H%M%S.%f').rstrip('0')
                 jsonimg['Photosphere_Resolution'] = '8000 x 4000'
+                jsonimg['Photosphere_URL'] = '{}/{}'.format(self.blobBaseUrl_photospheres, xlcols['Filename'])
                 jsonimg['Longitude'] = lon
                 jsonimg['Latitude'] = lat
                 jsonimg['Altitude'] = alt
@@ -415,7 +452,7 @@ class AzCognVisionRest(object):
         """
         try:
             imageName = blob.name
-
+            
             # Getting the photosphere image metadata
             metaString = {}
             if self.blobService.get_blob_metadata(containerIn, imageName) is not {}:
@@ -448,6 +485,7 @@ class AzCognVisionRest(object):
                     cardinalLabel = self.check_cardinality(cardinalDir)
                     cardinalImgName = '{}_{}_{}.jpg'.format(imageName.split('.jpg')[0], ncard + 1, cardinalLabel)
                     cmeta['Cardinal_Image_Name'] = cardinalImgName
+                    cmeta['Cardinal_Image_URL'] = '{}/{}/{}'.format(self.blobBaseUrl, containerOut, cardinalImgName)
                     cmeta['Cardinal_Number'] = ncard + 1
                     cmeta['Cardinal_Direction'] = cardinalDir
                     cmeta['Cardinal_Direction_Label'] = cardinalLabel
@@ -534,7 +572,6 @@ class AzCognVisionRest(object):
                                                 k += 1
                                                 cmeta['Object_{}_Parent_{}'.format(nobj + 1, k)] = obj['parent']['parent']['parent']['parent']['object']
                                                 cmeta['Object_{}_Parent_{}_Confidence'.format(nobj + 1, k)] = obj['parent']['parent']['parent']['parent']['confidence']
-                    cmeta['Picture'] = 'Replace with ArcGIS Online URL'
 
                     bounds = self.get_object_bounds(cmeta)
                     taggedImg = self.draw_boxes(cardinalImg, bounds)
@@ -552,8 +589,69 @@ class AzCognVisionRest(object):
                         blob = taggedArray,
                         metadata = cardinalMetaBlob
                         )
-
+            return
         except Exception as ex:
             # Print the exception message
             print(ex.args[0])
 
+
+
+
+    def create_geojson_from_cardinals(self, container):
+        """Generates a GeoJSON String from cardinal photosphere image analysis
+        This function follows the process_cardinal_images function after the cardinal images are generated,
+        their object detection process from Azure cognitive services computer vision is completed, and the 
+        cardinal images have been annotated and tagged.
+
+        Arguments
+            container: the Azure blob storage container that holds the cardinal images (analyzed)
+
+        Returns
+            fcresponse: a GeoJSON Feature Collection containing all GeoJSON features and geopoints with all analyses.
+        """
+        try:
+            featList = []
+            self.check_blob_container(container)
+            blobList = self.get_blob_list(container)
+            
+            for blob in tqdm(blobList):
+                if self.blobService.get_blob_metadata(container, blob.name) is not {}:
+                    metaString = self.blobService.get_blob_metadata(container, blob.name)
+
+                    fieldsFloat = ['Direction', 'Longitude', 'Latitude', 'Altitude', 'Origin_Easting', 'Origin_Northing', 'Origin_Height', 'Direction_Easting', 'Direction_Northing', 'Direction_Height', 'Up_Easting', 'Up_Northing', 'Up_Height', 'Roll', 'Pitch', 'Yaw', 'Omega', 'Phi', 'Kappa', 'Cardinal_Direction', 'Caption_Confidence']
+                    for fieldFloat in fieldsFloat:
+                        if fieldFloat in metaString:
+                            metaString[fieldFloat] = float(metaString[fieldFloat])
+
+                    fieldsInt = ['Cardinal_Number', 'Image_Width', 'Image_Height', 'Number_of_Categories', 'Number_of_Tags', 'Number_of_Objects']
+                    for fieldInt in fieldsInt:
+                        if fieldInt in metaString:
+                            metaString[fieldInt] = int(metaString[fieldInt])
+
+                    if metaString['Number_of_Categories'] >= 1:
+                        for i in range(1, metaString['Number_of_Categories'] + 1):
+                            metaString['Category_Score_{}'.format(i)] = float(metaString['Category_Score_{}'.format(i)])
+                    if metaString['Number_of_Tags'] >= 1:
+                        for j in range(1, metaString['Number_of_Tags'] + 1):
+                            metaString['Tag_Confidence_{}'.format(j)] = float(metaString['Tag_Confidence_{}'.format(j)])
+                    if metaString['Number_of_Objects'] >= 1:
+                        for k in range(1, metaString['Number_of_Objects'] + 1):
+                            metaString['Object_{}_Confidence'.format(k)] = float(metaString['Object_{}_Confidence'.format(k)])
+                            metaString['Object_{}_Direction'.format(k)] = float(metaString['Object_{}_Direction'.format(k)])
+                            metaString['Object_{}_Longitude'.format(k)] = float(0.0)
+                            metaString['Object_{}_Latitude'.format(k)] = float(0.0)
+                            metaString['x{}'.format(k)] = int(metaString['x{}'.format(k)])
+                            metaString['y{}'.format(k)] = int(metaString['y{}'.format(k)])
+                            metaString['w{}'.format(k)] = int(metaString['w{}'.format(k)])
+                            metaString['h{}'.format(k)] = int(metaString['h{}'.format(k)])
+                            metaString['Center_x{}'.format(k)] = float(metaString['Center_x{}'.format(k)])
+                            metaString['Center_y{}'.format(k)] = float(metaString['Center_y{}'.format(k)])
+
+                    gpoint = geojson.Point((metaString['Longitude'], metaString['Latitude']))
+                    gfeature = geojson.Feature(geometry = gpoint, properties = metaString)
+                    featList.append(gfeature)
+            fcresponse = geojson.FeatureCollection(featList)
+            return fcresponse
+        except Exception as ex:
+            # Print the exception message
+            print(ex.args[0])

@@ -47,11 +47,17 @@ for blob in blobtest:
     print(blob.name)
 
 
+az.check_blob_container('photospheres')
+
 az.update_blob_metadata(metadata = 'CameraMetadata.xlsx')
 
 blobList = az.get_blob_list()
 blob = blobList[0]
+
 az.process_cardinal_images(blob, 'photospheres','cardinal')
 for blob in tqdm(blobList):
     az.process_cardinal_images(blob, containerIn = containerName, containerOut= 'cardinal')
 
+
+az.check_blob_container('cardinal')
+az.create_geojson_from_cardinals('cardinal')
