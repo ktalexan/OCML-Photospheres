@@ -245,3 +245,20 @@ update_result = acvfl.edit_features(updates = [test])
 update_result
 
 [field for fields in acvfset.fields if field.name == 'Picture']
+
+
+item_properties = {
+    'title': 'Azure Cognitive Vision Cardinal Photospheres Feature Collection',
+    'tags': 'test, Azure Cognitive Vision, Machine Learning, Photospheres',
+    'snippet': 'Azure Cognitive Vision Feature Collection for Tagged Cardinal Photosphere Images',
+    'description': '<div style="text-align:Left;"><div><div><p><span>This layer contains image analysis results from </span><span style="font-weight:bold;"><font color="#008000">Azure Cognitive Services Computer Vision</font> </span><span>API run, for the </span><span style="font-weight:bold;"><font color="#b22222">tagged cardinal images (8 directions, 1000x1000)</font> </span><span>image parts from photospheres. The layer includes (embeds) the tagged (annotated) images as attachments.</span></p></div></div></div>',
+    'licenseInfo': 'This is a test dataset only. Should not be used in production settings.',
+    'accessInformation': 'This is a test dataset with programming under development. If you have any questions, contact Dr. Kostas Alexandridis for further details: Kostas.Alexandridis@ocpw.ocgov.com, (714) 967-0826',
+    'type': 'GeoJson'
+    }
+
+item_file = 'cardinalFeatureCollection2.json'
+
+
+cardinalfc = gis.content.add(item_properties, data=item_file, folder='AzCognVision')
+cardinalfl = cardinalfc.publish()
