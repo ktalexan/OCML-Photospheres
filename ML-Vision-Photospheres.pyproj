@@ -11,6 +11,8 @@
     <OutputPath>.</OutputPath>
     <Name>ML-Vision-Photospheres</Name>
     <RootNamespace>ML-Vision-Photospheres</RootNamespace>
+    <LaunchProvider>IronPython (.NET) launcher</LaunchProvider>
+    <DebugStdLib>False</DebugStdLib>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
