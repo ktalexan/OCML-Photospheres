@@ -50,19 +50,21 @@ for blob in blobtest:
 az.check_blob_container('photospheres')
 
 az.update_blob_metadata(metadata = 'CameraMetadata.xlsx')
+az.tag_photosphere_images('photospheres-tagged')
+
 
 blobList = az.get_blob_list()
 blob = blobList[0]
 
-az.process_cardinal_images(blob, 'photospheres','cardinal')
+az.process_cardinal_images(blob, containerIn =  'photospheres', containerTagged = 'photospheres-tagged', containerOut = 'cardinal')
 for blob in tqdm(blobList):
     az.process_cardinal_images(blob, containerIn = containerName, containerOut= 'cardinal')
 
 
 
-az.tag_photosphere_images('photospheres-tagged')
 
-az.check_blob_container('cardinal')
+az.check_blob_container('photospheres-tagged')
 cardinalFeatureCollection = az.create_geojson_from_cardinals('cardinal')
+cardinalFeatureCollection[0]['properties']
 az.write_jsonfile('cardinalFeatureCollection', cardinalFeatureCollection)
 

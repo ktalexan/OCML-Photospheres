@@ -34,7 +34,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="CameraMetadata.xlsx" />
-    <Content Include="cardinalFeatureCollection2.json" />
     <Content Include="credentialsArcGIS.json" />
     <Content Include="credentialsAzure.json" />
     <Content Include="README.md" />

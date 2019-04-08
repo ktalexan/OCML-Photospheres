@@ -81,8 +81,10 @@ class AzCognVisionRest(object):
 
         # Setup the Azure blob container name
         self.containerName = containerName
+        self.taggedName = '{}-tagged'.format(containerName)
         self.blobBaseUrl = 'https://{}.blob.core.windows.net'.format(self.blobAccount)
         self.blobBaseUrl_photospheres = '{}/{}'.format(self.blobBaseUrl, self.containerName)
+        self.blobBaseUrl_tagged = '{}/{}'.format(self.blobBaseUrl, self.taggedName)
 
 
 
@@ -406,6 +408,7 @@ class AzCognVisionRest(object):
                 jsonimg['DateTime_string'] = imgdt.strftime('%Y%m%d%H%M%S.%f').rstrip('0')
                 jsonimg['Photosphere_Resolution'] = '8000 x 4000'
                 jsonimg['Photosphere_URL'] = '{}/{}'.format(self.blobBaseUrl_photospheres, xlcols['Filename'])
+                jsonimg['Photosphere_Tagged_URL'] = '{}/{}'.format(self.blobBaseUrl_tagged, xlcols['Filename'])
                 jsonimg['Longitude'] = lon
                 jsonimg['Latitude'] = lat
                 jsonimg['Altitude'] = alt
@@ -453,7 +456,6 @@ class AzCognVisionRest(object):
             blobListIn = self.get_blob_list(self.containerName)
             for blob in tqdm(blobListIn):
                 blobmeta = self.blobService.get_blob_metadata(self.containerName,blob.name)
-                blobmeta['Photosphere_URL'] = '{}/{}/{}'.format(self.blobBaseUrl, blobContainerOut, blob.name)
                 imageName = blob.name
                 content = self.blobService.get_blob_to_bytes(self.containerName, imageName).content
                 img = Image.open(io.BytesIO(content))
@@ -482,7 +484,7 @@ class AzCognVisionRest(object):
 
 
 
-    def process_cardinal_images(self, blob, containerIn, containerOut):
+    def process_cardinal_images(self, blob, containerIn, containerTagged, containerOut):
         """Process cardinal images from original photospheres
         This function crops and obtains 8 cardinal images (1000 x 1000) from the original photospheres,
         by cropping a region between 1550 and 2550 pixels, i.e., from (x1 = 0, y1 = 1550) to (x2 = 8000, 
@@ -551,7 +553,7 @@ class AzCognVisionRest(object):
                     if 'metadata' in responsejson:
                         cmeta['Image_Width'] = responsejson['metadata']['width']
                         cmeta['Image_Height'] = responsejson['metadata']['height']
-                        cmeta['Image Format'] = responsejson['metadata']['format']
+                        cmeta['Image_Format'] = responsejson['metadata']['format']
                     if 'imageType' in responsejson:
                         cmeta['Clip_Art_Type'] = responsejson['imageType']['clipArtType']
                         cmeta['Line_Drawing_Type'] = responsejson['imageType']['lineDrawingType']
@@ -693,6 +695,10 @@ class AzCognVisionRest(object):
                             metaString['h{}'.format(k)] = int(metaString['h{}'.format(k)])
                             metaString['Center_x{}'.format(k)] = float(metaString['Center_x{}'.format(k)])
                             metaString['Center_y{}'.format(k)] = float(metaString['Center_y{}'.format(k)])
+                    for item in metaString:
+                        tempURL = metaString['Photosphere_URL'].split('/')
+                        tempURL[3] = 'photospheres-tagged'
+                        metaString['Photosphere_URL'] = ('/').join(tempURL)
 
                     gpoint = geojson.Point((metaString['Longitude'], metaString['Latitude']))
                     gfeature = geojson.Feature(geometry = gpoint, properties = metaString)
