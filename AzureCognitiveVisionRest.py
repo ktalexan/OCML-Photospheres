@@ -116,7 +116,7 @@ class AzCognVisionRest(object):
 
     def check_cardinality(self, value):
         """Returns a cardinal direction from a dictionary
-        This function checks a direction value (in degrees) agains a cardinal direction dictionary
+        This function checks a direction value (in degrees) against a cardinal direction dictionary
         It returns a cardinal direction class in which the direction value belongs to.
 
         Arguments
@@ -441,7 +441,7 @@ class AzCognVisionRest(object):
     def tag_photosphere_images(self, blobContainerOut):
         """Creates tagged photosphere images
         This function tags and annotates the original photosphere images with the areas covered by
-        the cardinal areas. The tagged photosphere images are then copyied to a new blob container.
+        the cardinal areas. The tagged photosphere images are then copied to a new blob container.
 
         Arguments
             blobContainerOut: the blob container for the tagged images to be saved (if it doesn't
@@ -485,7 +485,7 @@ class AzCognVisionRest(object):
 
 
     def process_cardinal_images(self, blob, containerIn, containerTagged, containerOut):
-        """Process cardinal images from original photospheres
+        """Processes cardinal images from original photospheres
         This function crops and obtains 8 cardinal images (1000 x 1000) from the original photospheres,
         by cropping a region between 1550 and 2550 pixels, i.e., from (x1 = 0, y1 = 1550) to (x2 = 8000, 
         y2 = 2550) vertically. The function returns a list with 8 cardinal images, from left to right, 
