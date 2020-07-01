@@ -10,7 +10,10 @@
 #   b. The API key generated for the Azure Cognitive Services Computer Vision service.
 # These two values, are then parsed for use in the rest of the code and functions.
 
-import os
+import os, http.client
+# Set maximum number of http requests
+http.client._MAXHEADERS = 5000
+
 
 # Setup account and key for the Azure blob storage containing the photosphere images.
 blobAccount = 'azmlstorageblob'
@@ -44,9 +47,24 @@ for blob in blobtest:
     print(blob.name)
 
 
+az.check_blob_container('photospheres')
+
 az.update_blob_metadata(metadata = 'CameraMetadata.xlsx')
+az.tag_photosphere_images('photospheres-tagged')
+
 
 blobList = az.get_blob_list()
-az.process_cardinal_images(blobList[0], containerIn = containerName, containerOut= 'cardinal')
+blob = blobList[0]
+
+az.process_cardinal_images(blob, containerIn =  'photospheres', containerTagged = 'photospheres-tagged', containerOut = 'cardinal')
 for blob in tqdm(blobList):
     az.process_cardinal_images(blob, containerIn = containerName, containerOut= 'cardinal')
+
+
+
+
+az.check_blob_container('photospheres-tagged')
+cardinalFeatureCollection = az.create_geojson_from_cardinals('cardinal')
+cardinalFeatureCollection[0]['properties']
+az.write_jsonfile('cardinalFeatureCollection', cardinalFeatureCollection)
+

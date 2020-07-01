@@ -32,19 +32,30 @@ http.client._MAXHEADERS = 5000
 
 class AzCognVisionRest(object):
     """Class AzCognVisionRest:
+    This class contains a number of functions, methods and processes for ML object classification analysis
+    using the Azure Cognitive Services Computer Vision API.
 
-    Attributes:
+    Global Attributes
+        blobAccount: the name of the Azure blob storage account
+        blobKey: the API key of the Azure blob storage account
         apiRegion: the azure region of the Azure Cognitive Services Computer Vision API (e.g., 'westus')
         apiKey: the Azure Cognitive Services Computer Vision API key (from azure)
+        containerName: the base container name of the Azure blob storage account containing the photosphere images
+
+    Example Class initialization:
+        az = AzCognVisionRest(blobAccount, blobKey, apiRegion, apiKey, containerName)
     """
 
     def __init__(self, blobAccount, blobKey, apiRegion, apiKey, containerName):
         """Function Class Initialization
         Returns an Azure Cognitive Services Computer Vision object (REST API) using a region and key.
 
-        Parameters
+        Attributes
+            blobAccount: the name of the Azure blob storage account
+            blobKey: the API key of the Azure blob storage account
             apiRegion: the azure region of the Azure Cognitive Services Computer Vision API (e.g., 'westus')
             apiKey: the Azure Cognitive Services Computer Vision API key (from azure)
+            containerName: the base container name of the Azure blob storage account containing the photosphere images
 
         Returns
             client: A ComputerVisionAPI object
@@ -66,13 +77,14 @@ class AzCognVisionRest(object):
         self.visionBaseUrl = 'https://{}.api.cognitive.microsoft.com/vision/v2.0/'.format(self.apiRegion)
 
         # Setup the global headers configuration
-        self.headers = {
-            'Ocp-Apim-Subscription-Key': self.subscriptionKey,
-            'Content-Type': 'application/octet-stream'
-            }
+        self.headers = {"Ocp-Apim-Subscription-Key": self.subscriptionKey, "Content-Type": "application/octet-stream"}
 
         # Setup the Azure blob container name
         self.containerName = containerName
+        self.taggedName = '{}-tagged'.format(containerName)
+        self.blobBaseUrl = 'https://{}.blob.core.windows.net'.format(self.blobAccount)
+        self.blobBaseUrl_photospheres = '{}/{}'.format(self.blobBaseUrl, self.containerName)
+        self.blobBaseUrl_tagged = '{}/{}'.format(self.blobBaseUrl, self.taggedName)
 
 
 
@@ -104,7 +116,7 @@ class AzCognVisionRest(object):
 
     def check_cardinality(self, value):
         """Returns a cardinal direction from a dictionary
-        This function checks a direction value (in degrees) agains a cardinal direction dictionary
+        This function checks a direction value (in degrees) against a cardinal direction dictionary
         It returns a cardinal direction class in which the direction value belongs to.
 
         Arguments
@@ -131,9 +143,10 @@ class AzCognVisionRest(object):
         for direction in cardinalDictionary:
             if cardinalDictionary[direction][0] <= round(value, 3) < cardinalDictionary[direction][1]:
                 if direction == 'N0' or direction == 'N1':
-                    direction = 'N'
-                return direction
-
+                    cardinalDir = 'N'
+                else:
+                    cardinalDir = direction
+        return cardinalDir
 
 
 
@@ -152,9 +165,10 @@ class AzCognVisionRest(object):
         """
         degout = math.degrees(math.atan2(easting, northing))
         if degout >= 0:
-            return 180 + degout
+            degout = 180 + degout
         elif degout < 0:
-            return - degout
+            degout = - degout
+        return degout
 
 
 
@@ -212,6 +226,34 @@ class AzCognVisionRest(object):
         return dtobject
 
 
+    def check_blob_container(self, containerName, create=False, publicAccess='blob'):
+        """Check for the presence of a blob container in the account
+        This function checks the Azure storage account whether or not a blob container (folder) exists or not.
+        If the container exists, the program makes sure the publicAccess is set to the value of the function.
+        If the container does not exist, if create=True, then the folder is created and publicAccess is set.
+        If the container does not exist, and create=False (default), nothing is done.
+
+        Arguments
+            containerName: the name of the blob container (folder) to be checked
+            create (=False by default): whether or not to create a new container if it doesn't exist.
+            publicAccess (='blob' by default): level of public access to URL ('blob', 'container', etc)
+
+        Returns
+            Nothing. Performs operations in Microsoft Azure Storage on the cloud.
+        """
+        if self.blobService.exists(containerName):
+            self.blobService.set_container_acl(containerName, public_access = publicAccess)
+            print('Container {} exists. Public Access is set to {}'.format(containerName, publicAccess))
+        elif create == True:
+            self.blobService.create_container(containerName, public_access = publicAccess)
+            assert self.blobService.exists(containerName)
+            print('Container {} did not exist. A new container is created with public_access set to {}'.format(containerName, publicAccess))
+        else:
+            print('Container did not exist. No changes are requested. Program exits.')
+        return
+
+
+
 
 
     # --------------------------------------
@@ -219,18 +261,23 @@ class AzCognVisionRest(object):
     # --------------------------------------
 
 
-    def get_blob_list(self):
+    def get_blob_list(self, containerName=None):
         """List all blobs in Azure storage blob
         This function gets a list of all files in an Azure storage blob (by container folder name)
 
         Arguments
-            containerName: the Azure storage blob container name (from class initialization)
+            containerName (optional): 
+                if containerName is None: Uses the Azure storage blob container name (from class initialization)
+                if containerName is not None: Uses the defined Azure storage blob container
 
         Output
             blobList: the list of all files in the container
         """
         # List the blobs in the container (from class initialization)
-        container = self.containerName
+        if containerName is None:
+            container = self.containerName
+        else:
+            container = containerName
         blobList = []
         generator = self.blobService.list_blobs(container)
         for blob in generator:
@@ -309,6 +356,7 @@ class AzCognVisionRest(object):
         filename = name + '.json'
         with open(filename, 'w') as fp:
             json.dump(data, fp)
+        return
 
 
 
@@ -333,6 +381,7 @@ class AzCognVisionRest(object):
             Nothing; performs operation in the blob container
         """
         containerList = self.get_blob_list()
+        self.check_blob_container(self.containerName)
         noImg = len(containerList)
         print('Number of blobs in container: {}'.format(noImg))
 
@@ -358,6 +407,8 @@ class AzCognVisionRest(object):
                 jsonimg['DateTime_display'] = imgdt.strftime('%m/%d/%Y %H:%M:%S.%f').rstrip('0')
                 jsonimg['DateTime_string'] = imgdt.strftime('%Y%m%d%H%M%S.%f').rstrip('0')
                 jsonimg['Photosphere_Resolution'] = '8000 x 4000'
+                jsonimg['Photosphere_URL'] = '{}/{}'.format(self.blobBaseUrl_photospheres, xlcols['Filename'])
+                jsonimg['Photosphere_Tagged_URL'] = '{}/{}'.format(self.blobBaseUrl_tagged, xlcols['Filename'])
                 jsonimg['Longitude'] = lon
                 jsonimg['Latitude'] = lat
                 jsonimg['Altitude'] = alt
@@ -381,13 +432,60 @@ class AzCognVisionRest(object):
                 for key in jsonimg.keys():
                     metastring[key] = str(jsonimg[key])
                 self.blobService.set_blob_metadata(self.containerName,imgName, metastring)
-                print('\tUpdating metadata in azure blob')                
+                print('\tUpdating metadata in azure blob')
+        return
 
 
 
 
-    def process_cardinal_images(self, blob, containerIn, containerOut):
-        """Process cardinal images from original photospheres
+    def tag_photosphere_images(self, blobContainerOut):
+        """Creates tagged photosphere images
+        This function tags and annotates the original photosphere images with the areas covered by
+        the cardinal areas. The tagged photosphere images are then copied to a new blob container.
+
+        Arguments
+            blobContainerOut: the blob container for the tagged images to be saved (if it doesn't
+                            exist, then the folder is created)
+
+        Output
+            Nothing, all operations are done to the blob container.
+        """
+        try:
+            self.check_blob_container(self.containerName)
+            self.check_blob_container(blobContainerOut, create=True, publicAccess='blob')
+            blobListIn = self.get_blob_list(self.containerName)
+            for blob in tqdm(blobListIn):
+                blobmeta = self.blobService.get_blob_metadata(self.containerName,blob.name)
+                imageName = blob.name
+                content = self.blobService.get_blob_to_bytes(self.containerName, imageName).content
+                img = Image.open(io.BytesIO(content))
+                draw = ImageDraw.Draw(img)
+                font = ImageFont.truetype('arial.ttf', 45)
+                areas = []
+                step = 1000
+                for i in range(0, 8000, step):
+                    coor = (i, 1550, i + step, 2550)
+                    areas.append(coor)
+                for ncard, area in enumerate(areas):
+                    draw.rectangle([area[0], area[1], area[2], area[3]], None, 'red', width=3)
+                    draw.text((area[0] + 5, area[1] + 5), str(ncard + 1), fill = 'red', font = font)
+                    taggedImgArray = io.BytesIO()
+                    img.save(taggedImgArray, format = 'JPEG')
+                    taggedImgArray = taggedImgArray.getvalue()
+                    self.blobService.create_blob_from_bytes(
+                        container_name = blobContainerOut,
+                        blob_name = imageName,
+                        blob = taggedImgArray,
+                        metadata = blobmeta
+                        )
+        except Exception as ex:
+            print(ex.args[0])
+
+
+
+
+    def process_cardinal_images(self, blob, containerIn, containerTagged, containerOut):
+        """Processes cardinal images from original photospheres
         This function crops and obtains 8 cardinal images (1000 x 1000) from the original photospheres,
         by cropping a region between 1550 and 2550 pixels, i.e., from (x1 = 0, y1 = 1550) to (x2 = 8000, 
         y2 = 2550) vertically. The function returns a list with 8 cardinal images, from left to right, 
@@ -403,7 +501,7 @@ class AzCognVisionRest(object):
         """
         try:
             imageName = blob.name
-
+            
             # Getting the photosphere image metadata
             metaString = {}
             if self.blobService.get_blob_metadata(containerIn, imageName) is not {}:
@@ -413,7 +511,7 @@ class AzCognVisionRest(object):
                     metaString[field] = float(metaString[field])
 
                 # Getting the photosphere image from azure blob storage and convert it to bytes
-                content = self.blobService.get_blob_to_bytes(containerIn, blob.name).content
+                content = self.blobService.get_blob_to_bytes(containerIn, imageName).content
                 img = Image.open(io.BytesIO(content))
 
                 # Creating the areas of the cardinal images
@@ -436,14 +534,16 @@ class AzCognVisionRest(object):
                     cardinalLabel = self.check_cardinality(cardinalDir)
                     cardinalImgName = '{}_{}_{}.jpg'.format(imageName.split('.jpg')[0], ncard + 1, cardinalLabel)
                     cmeta['Cardinal_Image_Name'] = cardinalImgName
+                    cmeta['Cardinal_Image_URL'] = '{}/{}/{}'.format(self.blobBaseUrl, containerOut, cardinalImgName)
                     cmeta['Cardinal_Number'] = ncard + 1
                     cmeta['Cardinal_Direction'] = cardinalDir
                     cmeta['Cardinal_Direction_Label'] = cardinalLabel
 
                     # Set up the Computer Vision analysis parameter
                     url = self.visionBaseUrl + 'analyze'
-                    params = {'visualFeatures': 'Categories,Tags,Description,ImageType,Color,Objects'}
-                    response = requests.post(url, headers = self.headers, params = params, data = cardinalArray)
+                    headers = self.headers
+                    params = {"visualFeatures": "Categories,Tags,Description,ImageType,Color,Objects"}
+                    response = requests.post(url, headers = headers, params = params, data = cardinalArray)
                     response.raise_for_status()
                     responsejson = response.json()
                     if 'captions' in responsejson['description']:
@@ -453,7 +553,7 @@ class AzCognVisionRest(object):
                     if 'metadata' in responsejson:
                         cmeta['Image_Width'] = responsejson['metadata']['width']
                         cmeta['Image_Height'] = responsejson['metadata']['height']
-                        cmeta['Image Format'] = responsejson['metadata']['format']
+                        cmeta['Image_Format'] = responsejson['metadata']['format']
                     if 'imageType' in responsejson:
                         cmeta['Clip_Art_Type'] = responsejson['imageType']['clipArtType']
                         cmeta['Line_Drawing_Type'] = responsejson['imageType']['lineDrawingType']
@@ -521,7 +621,6 @@ class AzCognVisionRest(object):
                                                 k += 1
                                                 cmeta['Object_{}_Parent_{}'.format(nobj + 1, k)] = obj['parent']['parent']['parent']['parent']['object']
                                                 cmeta['Object_{}_Parent_{}_Confidence'.format(nobj + 1, k)] = obj['parent']['parent']['parent']['parent']['confidence']
-                    cmeta['Picture'] = 'Replace with ArcGIS Online URL'
 
                     bounds = self.get_object_bounds(cmeta)
                     taggedImg = self.draw_boxes(cardinalImg, bounds)
@@ -539,10 +638,73 @@ class AzCognVisionRest(object):
                         blob = taggedArray,
                         metadata = cardinalMetaBlob
                         )
-
+            return
         except Exception as ex:
             # Print the exception message
             print(ex.args[0])
 
 
 
+
+    def create_geojson_from_cardinals(self, container):
+        """Generates a GeoJSON String from cardinal photosphere image analysis
+        This function follows the process_cardinal_images function after the cardinal images are generated,
+        their object detection process from Azure cognitive services computer vision is completed, and the 
+        cardinal images have been annotated and tagged.
+
+        Arguments
+            container: the Azure blob storage container that holds the cardinal images (analyzed)
+
+        Returns
+            fcresponse: a GeoJSON Feature Collection containing all GeoJSON features and geopoints with all analyses.
+        """
+        try:
+            featList = []
+            self.check_blob_container(container)
+            blobList = self.get_blob_list(container)
+            
+            for blob in tqdm(blobList):
+                if self.blobService.get_blob_metadata(container, blob.name) is not {}:
+                    metaString = self.blobService.get_blob_metadata(container, blob.name)
+
+                    fieldsFloat = ['Direction', 'Longitude', 'Latitude', 'Altitude', 'Origin_Easting', 'Origin_Northing', 'Origin_Height', 'Direction_Easting', 'Direction_Northing', 'Direction_Height', 'Up_Easting', 'Up_Northing', 'Up_Height', 'Roll', 'Pitch', 'Yaw', 'Omega', 'Phi', 'Kappa', 'Cardinal_Direction', 'Caption_Confidence']
+                    for fieldFloat in fieldsFloat:
+                        if fieldFloat in metaString:
+                            metaString[fieldFloat] = float(metaString[fieldFloat])
+
+                    fieldsInt = ['Cardinal_Number', 'Image_Width', 'Image_Height', 'Number_of_Categories', 'Number_of_Tags', 'Number_of_Objects']
+                    for fieldInt in fieldsInt:
+                        if fieldInt in metaString:
+                            metaString[fieldInt] = int(metaString[fieldInt])
+
+                    if metaString['Number_of_Categories'] >= 1:
+                        for i in range(1, metaString['Number_of_Categories'] + 1):
+                            metaString['Category_Score_{}'.format(i)] = float(metaString['Category_Score_{}'.format(i)])
+                    if metaString['Number_of_Tags'] >= 1:
+                        for j in range(1, metaString['Number_of_Tags'] + 1):
+                            metaString['Tag_Confidence_{}'.format(j)] = float(metaString['Tag_Confidence_{}'.format(j)])
+                    if metaString['Number_of_Objects'] >= 1:
+                        for k in range(1, metaString['Number_of_Objects'] + 1):
+                            metaString['Object_{}_Confidence'.format(k)] = float(metaString['Object_{}_Confidence'.format(k)])
+                            metaString['Object_{}_Direction'.format(k)] = float(metaString['Object_{}_Direction'.format(k)])
+                            metaString['Object_{}_Longitude'.format(k)] = float(0.0)
+                            metaString['Object_{}_Latitude'.format(k)] = float(0.0)
+                            metaString['x{}'.format(k)] = int(metaString['x{}'.format(k)])
+                            metaString['y{}'.format(k)] = int(metaString['y{}'.format(k)])
+                            metaString['w{}'.format(k)] = int(metaString['w{}'.format(k)])
+                            metaString['h{}'.format(k)] = int(metaString['h{}'.format(k)])
+                            metaString['Center_x{}'.format(k)] = float(metaString['Center_x{}'.format(k)])
+                            metaString['Center_y{}'.format(k)] = float(metaString['Center_y{}'.format(k)])
+                    for item in metaString:
+                        tempURL = metaString['Photosphere_URL'].split('/')
+                        tempURL[3] = 'photospheres-tagged'
+                        metaString['Photosphere_URL'] = ('/').join(tempURL)
+
+                    gpoint = geojson.Point((metaString['Longitude'], metaString['Latitude']))
+                    gfeature = geojson.Feature(geometry = gpoint, properties = metaString)
+                    featList.append(gfeature)
+            fcresponse = geojson.FeatureCollection(featList)
+            return fcresponse
+        except Exception as ex:
+            # Print the exception message
+            print(ex.args[0])

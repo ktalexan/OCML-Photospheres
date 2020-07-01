@@ -11,6 +11,8 @@
     <OutputPath>.</OutputPath>
     <Name>ML-Vision-Photospheres</Name>
     <RootNamespace>ML-Vision-Photospheres</RootNamespace>
+    <LaunchProvider>IronPython (.NET) launcher</LaunchProvider>
+    <DebugStdLib>False</DebugStdLib>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -21,10 +23,20 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AzureCognitiveVisionRest_v2.py" />
     <Compile Include="AzureCognitiveVisionRest.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ML Vision ArcGIS.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="ML_Vision_Photospheres.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="CameraMetadata.xlsx" />
+    <Content Include="credentialsArcGIS.json" />
+    <Content Include="credentialsAzure.json" />
+    <Content Include="README.md" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
