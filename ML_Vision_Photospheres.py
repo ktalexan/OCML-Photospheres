@@ -17,7 +17,7 @@ http.client._MAXHEADERS = 5000
 
 # Setup account and key for the Azure blob storage containing the photosphere images.
 blobAccount = 'azmlstorageblob'
-blobKey = 'pBG54bJUphLDEcuhob7gFywUHzRwFEnw6ZqMVpM/QeIOaGkx7SO3uTMd2lZ783Ocy0vkxiTw+70eFhqeB4fwEw=='
+blobKey = ***
 containerName = 'photospheres'
 
 # Setup region and key for the Azure vision client API
