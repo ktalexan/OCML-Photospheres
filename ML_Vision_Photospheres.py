@@ -22,7 +22,7 @@ containerName = 'photospheres'
 
 # Setup region and key for the Azure vision client API
 apiRegion = 'westus2'
-apiKey = 'd0d6e0b08528494587e8fb0e5efee409'
+apiKey = ***
 
 
 computer = os.environ['COMPUTERNAME']
