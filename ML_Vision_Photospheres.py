@@ -3,7 +3,7 @@
 # -----------------------------------------------
 
 # The first set of variables involve the Azure blob storage account and key containing the photosphere image data. 
-# Using these two values, we create a blobService that can be used (parsed) in consequent functions and operations.
+# Using these two values, we create a Service that can be used (parsed) in consequent functions and operations.
 
 # Also, in order to run the Azure Cognitive Services REST API, the following values must be provided:
 #   a. The Azure region for which the API is configured, and;
